@@ -967,6 +967,13 @@ SubstraitExporter::exportOperation(LiteralOp op) {
     std::string res(16, 0);
     llvm::StoreIntToMemory(uuid, reinterpret_cast<uint8_t *>(res.data()), 16);
     literal->set_uuid(res);
+  } else if (auto decimalType = dyn_cast<DecimalType>(literalType)) {
+    auto decimal =
+        std::make_unique<::substrait::proto::Expression_Literal_Decimal>();
+    auto decimalAttr = mlir::cast<DecimalAttr>(value);
+    decimal->set_scale(decimalAttr.getScale());
+    decimal->set_precision(decimalAttr.getPrecision());
+    literal->set_allocated_decimal(decimal.release());
   } else
     op->emitOpError("has unsupported value");
 
