@@ -142,19 +142,6 @@ def Substrait_UUIDAttr
   let assemblyFormat = [{ `<` $value `>` }];
 }
 
-def Substrait_DecimalAttr
-    : Substrait_StaticallyTypedAttr<"Decimal", "decimal",
-                                    "DecimalType"> {
-  let summary = "Substrait decimal type";
-  let description = [{
-    This type represents a substrait decimal attribute type.
-  }];
-
-  let parameters = (ins "StringAttr":$value);
-  let assemblyFormat = [{ `<` $value `>` }];
-  let genVerifyDecl = 1;
-}
-
 def Substrait_VersionAttr : Substrait_Attr<"Version", "version"> {
   let summary = "Substrait version";
   let description = [{
@@ -206,6 +193,7 @@ def Substrait_AtomicAttributes {
     F64Attr, // FP64
     TypedStrAttr<Substrait_StringType>, // String
     TypedStrAttr<Substrait_BinaryType>, // Binary
+    TypedStrAttr<Substrait_DecimalType>, // Decimal
     Substrait_TimestampAttr, // Timestamp
     Substrait_TimestampTzAttr, // TimestampTZ
     Substrait_DateAttr, // Date
@@ -213,7 +201,6 @@ def Substrait_AtomicAttributes {
     Substrait_IntervalYearMonthAttr, // IntervalYear
     Substrait_IntervalDaySecondAttr, // IntervalDay
     Substrait_UUIDAttr, // UUID
-    Substrait_DecimalAttr, // Decimal
   ];
 }
 

@@ -91,7 +91,11 @@ LogicalResult mlir::substrait::IntervalDaySecondAttr::verify(
   return success();
 }
 
-LogicalResult mlir::substrait::DecimalAttr::verify(
+//===----------------------------------------------------------------------===//
+// Substrait types
+//===----------------------------------------------------------------------===//
+
+LogicalResult mlir::substrait::DecimalType::verify(
     llvm::function_ref<mlir::InFlightDiagnostic()> emitError, int32_t precision,
     int32_t scale) {
   if (precision > 38)
@@ -100,7 +104,8 @@ LogicalResult mlir::substrait::DecimalAttr::verify(
 
   if (scale < 0 || scale > precision)
     return emitError() << "scale must be in a range of [0..P] (P = "
-                       << precision << ")" << " but got " << scale;
+                       << precision << ")"
+                       << " but got " << scale;
 
   return success();
 }

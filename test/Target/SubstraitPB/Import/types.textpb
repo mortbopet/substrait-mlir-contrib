@@ -468,12 +468,12 @@ version {
   patch_number: 1
 }
 
-// -----
+# -----
 
 # CHECK:      substrait.plan
 # CHECK-NEXT:   relation
 # CHECK-NEXT:     named_table
-# CHECK-SAME:       : tuple<decimal<12, 3>>
+# CHECK-SAME:       : tuple<!substrait.decimal<12, 3>>
 
 relations {
   rel {
