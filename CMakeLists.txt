@@ -53,7 +53,7 @@ mlir_configure_python_dev_packages()
 ################################################################################
 # Enable LLVM stuff
 ################################################################################
-include(TableGen)
+# include(TableGen) # already included by LLVM
 include(AddLLVM)
 include(AddMLIR)
 
