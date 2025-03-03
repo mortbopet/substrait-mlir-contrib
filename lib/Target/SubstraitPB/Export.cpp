@@ -18,12 +18,17 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/ErrorHandling.h"
 
+// TODO(ingomueller): Find a way to make `substrait-cpp` declare these headers
+// as system headers and remove the diagnostic fiddling here.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
 #include <substrait/proto/algebra.pb.h>
 #include <substrait/proto/extensions/extensions.pb.h>
 #include <substrait/proto/plan.pb.h>
 #include <substrait/proto/type.pb.h>
+#pragma clang diagnostic pop
 
 using namespace mlir;
 using namespace mlir::substrait;
@@ -31,9 +36,9 @@ using namespace mlir::substrait::protobuf_utils;
 using namespace ::substrait;
 using namespace ::substrait::proto;
 
-namespace _pb = google::protobuf;
-
 namespace {
+
+namespace pb = ::google::protobuf;
 
 /// Main structure to drive export from the dialect to protobuf. This class
 /// holds the visitor functions for the various ops etc. from the dialect as
@@ -60,7 +65,7 @@ public:
   DECLARE_EXPORT_FUNC(FilterOp, Rel)
   DECLARE_EXPORT_FUNC(JoinOp, Rel)
   DECLARE_EXPORT_FUNC(LiteralOp, Expression)
-  DECLARE_EXPORT_FUNC(ModuleOp, _pb::Message)
+  DECLARE_EXPORT_FUNC(ModuleOp, pb::Message)
   DECLARE_EXPORT_FUNC(NamedTableOp, Rel)
   DECLARE_EXPORT_FUNC(PlanOp, Plan)
   DECLARE_EXPORT_FUNC(PlanVersionOp, PlanVersion)
@@ -82,10 +87,10 @@ public:
   FailureOr<std::unique_ptr<Expression>> exportCallOpScalar(CallOp op);
   FailureOr<std::unique_ptr<Expression>> exportCallOpWindow(CallOp op);
 
-  std::unique_ptr<_pb::Any> exportAny(StringAttr attr);
+  std::unique_ptr<pb::Any> exportAny(StringAttr attr);
   FailureOr<std::unique_ptr<NamedStruct>>
   exportNamedStruct(Location loc, ArrayAttr fieldNames, TupleType relationType);
-  FailureOr<std::unique_ptr<_pb::Message>> exportOperation(Operation *op);
+  FailureOr<std::unique_ptr<pb::Message>> exportOperation(Operation *op);
   FailureOr<std::unique_ptr<proto::Type>> exportType(Location loc,
                                                      mlir::Type mlirType);
 
@@ -130,13 +135,13 @@ void SubstraitExporter::exportAdvancedExtension(ExtensibleOpInterface op,
 
   // Set `optimization` field if present.
   if (optimizationAttr) {
-    std::unique_ptr<_pb::Any> optimization = exportAny(optimizationAttr);
+    std::unique_ptr<pb::Any> optimization = exportAny(optimizationAttr);
     extension->set_allocated_optimization(optimization.release());
   }
 
   // Set `enhancement` field if present.
   if (enhancementAttr) {
-    std::unique_ptr<_pb::Any> enhancement = exportAny(enhancementAttr);
+    std::unique_ptr<pb::Any> enhancement = exportAny(enhancementAttr);
     extension->set_allocated_enhancement(enhancement.release());
   }
 
@@ -145,8 +150,8 @@ void SubstraitExporter::exportAdvancedExtension(ExtensibleOpInterface op,
   Trait::set_allocated_advanced_extension(message, extension.release());
 }
 
-std::unique_ptr<_pb::Any> SubstraitExporter::exportAny(StringAttr attr) {
-  auto any = std::make_unique<_pb::Any>();
+std::unique_ptr<pb::Any> SubstraitExporter::exportAny(StringAttr attr) {
+  auto any = std::make_unique<pb::Any>();
   auto anyType = mlir::cast<AnyType>(attr.getType());
   std::string typeUrl = anyType.getTypeUrl().getValue().str();
   std::string value = attr.getValue().str();
@@ -727,7 +732,7 @@ SubstraitExporter::exportOperation(ExtensionTableOp op) {
 
   // Build `ExtensionTable` message.
   StringAttr detailAttr = op.getDetailAttr();
-  std::unique_ptr<_pb::Any> detail = exportAny(detailAttr);
+  std::unique_ptr<pb::Any> detail = exportAny(detailAttr);
   auto extensionTable = std::make_unique<ReadRel::ExtensionTable>();
   extensionTable->set_allocated_detail(detail.release());
 
@@ -1001,7 +1006,7 @@ SubstraitExporter::exportOperation(LiteralOp op) {
   return expression;
 }
 
-FailureOr<std::unique_ptr<_pb::Message>>
+FailureOr<std::unique_ptr<pb::Message>>
 SubstraitExporter::exportOperation(ModuleOp op) {
   if (!op->getAttrs().empty()) {
     op->emitOpError("has attributes");
@@ -1501,17 +1506,16 @@ SubstraitExporter::exportOperation(RelOpInterface op) {
       });
 }
 
-FailureOr<std::unique_ptr<_pb::Message>>
+FailureOr<std::unique_ptr<pb::Message>>
 SubstraitExporter::exportOperation(Operation *op) {
-  return llvm::TypeSwitch<Operation *,
-                          FailureOr<std::unique_ptr<_pb::Message>>>(op)
+  return llvm::TypeSwitch<Operation *, FailureOr<std::unique_ptr<pb::Message>>>(
+             op)
       .Case<ModuleOp, PlanOp, PlanVersionOp>(
-          [&](auto op) -> FailureOr<std::unique_ptr<_pb::Message>> {
+          [&](auto op) -> FailureOr<std::unique_ptr<pb::Message>> {
             auto typedMessage = exportOperation(op);
             if (failed(typedMessage))
               return failure();
-            return std::unique_ptr<_pb::Message>(
-                typedMessage.value().release());
+            return std::unique_ptr<pb::Message>(typedMessage.value().release());
           })
       .Default([](auto op) {
         op->emitOpError("not supported for export");
@@ -1521,11 +1525,11 @@ SubstraitExporter::exportOperation(Operation *op) {
 
 } // namespace
 
-LogicalResult mlir::substrait::translateSubstraitToProtobuf(
+LogicalResult substrait::mlir::translateSubstraitToProtobuf(
     Operation *op, llvm::raw_ostream &output,
-    mlir::substrait::ImportExportOptions options) {
+    substrait::ImportExportOptions options) {
   SubstraitExporter exporter;
-  FailureOr<std::unique_ptr<_pb::Message>> result =
+  FailureOr<std::unique_ptr<::google::protobuf::Message>> result =
       exporter.exportOperation(op);
   if (failed(result))
     return failure();
@@ -1533,7 +1537,7 @@ LogicalResult mlir::substrait::translateSubstraitToProtobuf(
   std::string out;
   switch (options.serdeFormat) {
   case substrait::SerdeFormat::kText:
-    if (!_pb::TextFormat::PrintToString(*result.value(), &out)) {
+    if (!::google::protobuf::TextFormat::PrintToString(*result.value(), &out)) {
       op->emitOpError("could not be serialized to text format");
       return failure();
     }
@@ -1546,11 +1550,11 @@ LogicalResult mlir::substrait::translateSubstraitToProtobuf(
     break;
   case substrait::SerdeFormat::kJson:
   case substrait::SerdeFormat::kPrettyJson: {
-    _pb::util::JsonOptions jsonOptions;
+    pb::util::JsonPrintOptions jsonOptions;
     if (options.serdeFormat == SerdeFormat::kPrettyJson)
       jsonOptions.add_whitespace = true;
-    auto status =
-        _pb::util::MessageToJsonString(*result.value(), &out, jsonOptions);
+    absl::Status status =
+        pb::util::MessageToJsonString(*result.value(), &out, jsonOptions);
     if (!status.ok()) {
       InFlightDiagnostic diag =
           op->emitOpError("could not be serialized to JSON format");

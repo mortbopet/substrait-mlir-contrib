@@ -9,15 +9,20 @@
 #include "ProtobufUtils.h"
 #include "mlir/IR/Diagnostics.h"
 
+// TODO(ingomueller): Find a way to make `substrait-cpp` declare these headers
+// as system headers and remove the diagnostic fiddling here.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 #include <substrait/proto/algebra.pb.h>
+#pragma clang diagnostic pop
 
 using namespace mlir;
 using namespace ::substrait;
 using namespace ::substrait::proto;
 
-namespace _pb = google::protobuf;
-
 namespace mlir::substrait::protobuf_utils {
+
+namespace pb = ::google::protobuf;
 
 template <typename RelType>
 static const RelCommon *getCommon(const RelType &rel) {
@@ -44,7 +49,7 @@ FailureOr<const RelCommon *> getCommon(const Rel &rel, Location loc) {
   case Rel::RelTypeCase::kSet:
     return getCommon(rel.set());
   default:
-    const _pb::FieldDescriptor *desc =
+    const pb::FieldDescriptor *desc =
         Rel::GetDescriptor()->FindFieldByNumber(relType);
     return emitError(loc) << Twine("unsupported Rel type: ") + desc->name();
   }
@@ -75,7 +80,7 @@ FailureOr<RelCommon *> getMutableCommon(Rel *rel, Location loc) {
   case Rel::RelTypeCase::kSet:
     return getMutableCommon(rel->mutable_set());
   default:
-    const _pb::FieldDescriptor *desc =
+    const pb::FieldDescriptor *desc =
         Rel::GetDescriptor()->FindFieldByNumber(relType);
     return emitError(loc) << Twine("unsupported Rel type: ") + desc->name();
   }
