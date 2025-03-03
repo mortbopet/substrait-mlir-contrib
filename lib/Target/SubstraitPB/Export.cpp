@@ -1525,7 +1525,7 @@ SubstraitExporter::exportOperation(Operation *op) {
 
 } // namespace
 
-LogicalResult substrait::mlir::translateSubstraitToProtobuf(
+LogicalResult mlir::substrait::translateSubstraitToProtobuf(
     Operation *op, llvm::raw_ostream &output,
     substrait::ImportExportOptions options) {
   SubstraitExporter exporter;
@@ -1550,11 +1550,11 @@ LogicalResult substrait::mlir::translateSubstraitToProtobuf(
     break;
   case substrait::SerdeFormat::kJson:
   case substrait::SerdeFormat::kPrettyJson: {
-    pb::util::JsonPrintOptions jsonOptions;
+    ::google::protobuf::util::JsonPrintOptions jsonOptions;
     if (options.serdeFormat == SerdeFormat::kPrettyJson)
       jsonOptions.add_whitespace = true;
-    absl::Status status =
-        pb::util::MessageToJsonString(*result.value(), &out, jsonOptions);
+    absl::Status status = ::google::protobuf::util::MessageToJsonString(
+        *result.value(), &out, jsonOptions);
     if (!status.ok()) {
       InFlightDiagnostic diag =
           op->emitOpError("could not be serialized to JSON format");
